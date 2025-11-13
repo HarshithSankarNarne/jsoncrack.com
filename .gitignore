@@ -40,3 +40,7 @@ npm-debug.log*
 **/public/fallback-*.js
 # Sentry Auth Token
 .sentryclirc
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
