@@ -143,6 +143,7 @@ export const NodeModal = ({ opened, onClose }: ModalProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState("");
   const [originalContent, setOriginalContent] = useState("");
+  const [displayKey, setDisplayKey] = useState(0);
 
   // Update edited content when node data changes or when entering edit mode
   useEffect(() => {
@@ -216,6 +217,46 @@ export const NodeModal = ({ opened, onClose }: ModalProps) => {
 
       const updatedJsonString = JSON.stringify(currentJson, null, 2);
       setContents({ contents: updatedJsonString });
+      
+      // Update the selectedNode in the graph store with fresh data
+      const updatedNode = { ...nodeData };
+      
+      // Navigate to the updated location in the JSON
+      let freshTarget = currentJson;
+      const pathCopy = [...nodeData.path];
+      const finalKey = pathCopy.pop();
+      
+      for (const key of pathCopy) {
+        if (freshTarget && typeof freshTarget === 'object') {
+          freshTarget = freshTarget[key];
+        }
+      }
+      
+      const finalValue = finalKey !== undefined ? freshTarget?.[finalKey] : freshTarget;
+      
+      // Rebuild the text array with updated values
+      if (nodeData.text.length === 1 && !nodeData.text[0].key) {
+        // Single value node
+        updatedNode.text = [{
+          ...nodeData.text[0],
+          value: String(finalValue)
+        }];
+      } else if (typeof finalValue === 'object' && finalValue !== null) {
+        // Multi-value node - update text array with new values
+        updatedNode.text = nodeData.text.map(row => {
+          if (row.key && finalValue.hasOwnProperty(row.key)) {
+            const newValue = finalValue[row.key];
+            if (typeof newValue !== 'object' || newValue === null) {
+              return { ...row, value: String(newValue) };
+            }
+          }
+          return row;
+        });
+      }
+      
+      // Update the selected node in the graph store
+      setSelectedNode(updatedNode);
+      
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating JSON:", error);
@@ -277,7 +318,10 @@ export const NodeModal = ({ opened, onClose }: ModalProps) => {
                 />
               </>
             ) : (
-              <ColorAwareJsonDisplay jsonString={normalizeNodeData(nodeData?.text ?? [])} />
+              <ColorAwareJsonDisplay 
+                key={displayKey}
+                jsonString={normalizeNodeData(nodeData?.text ?? [])} 
+              />
             )}
           </ScrollArea.Autosize>
         </Stack>
